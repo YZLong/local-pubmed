@@ -1,0 +1,188 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Local PubMed Search</title>
+    <link rel="stylesheet" href="/static/styles.css">
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="brand">
+        <div class="brand-mark">P</div>
+        <div>
+          <div class="brand-name">Local PubMed</div>
+          <div class="brand-subtitle">pubmed_articles</div>
+        </div>
+      </div>
+      <nav class="top-actions" aria-label="Primary">
+        <a href="/help" target="_blank" rel="noreferrer" data-i18n="help">帮助</a>
+        <a href="/docs" target="_blank" rel="noreferrer" data-i18n="apiDocs">API 文档</a>
+        <button id="languageToggle" class="ghost-button" type="button">EN</button>
+        <button id="refreshStatus" class="ghost-button" type="button" data-i18n="status">状态</button>
+      </nav>
+    </header>
+
+    <main>
+      <section class="search-band">
+        <form id="searchForm" class="search-form">
+          <div class="search-line">
+            <select id="fieldSelect" aria-label="Search field">
+              <option value="all" data-i18n="fieldAll">全部字段</option>
+              <option value="title" data-i18n="fieldTitle">题名</option>
+              <option value="abstract" data-i18n="fieldAbstract">摘要</option>
+              <option value="author" data-i18n="fieldAuthor">作者</option>
+              <option value="journal" data-i18n="fieldJournal">期刊</option>
+              <option value="mesh">MeSH</option>
+              <option value="chemical" data-i18n="fieldChemical">化合物</option>
+              <option value="gene" data-i18n="fieldGene">基因</option>
+              <option value="id" data-i18n="fieldId">标识符</option>
+            </select>
+            <input id="queryInput" type="search" autocomplete="off" spellcheck="false" placeholder="esophageal cancer GNAS" aria-label="Search query">
+            <button class="primary-button" type="submit" data-i18n="search">检索</button>
+          </div>
+
+          <div class="query-tools">
+            <div class="segmented" role="group" aria-label="Search mode">
+              <input type="radio" id="modeBalanced" name="mode" value="balanced" checked>
+              <label for="modeBalanced" data-i18n="modeBalanced">均衡</label>
+              <input type="radio" id="modeStrict" name="mode" value="strict">
+              <label for="modeStrict" data-i18n="modeStrict">严格</label>
+              <input type="radio" id="modeBroad" name="mode" value="broad">
+              <label for="modeBroad" data-i18n="modeBroad">宽泛</label>
+              <input type="radio" id="modePhrase" name="mode" value="phrase">
+              <label for="modePhrase" data-i18n="modePhrase">短语</label>
+            </div>
+            <select id="sortSelect" aria-label="Sort">
+              <option value="relevance" data-i18n="sortRelevance">最佳匹配</option>
+              <option value="newest" data-i18n="sortNewest">最新</option>
+              <option value="oldest" data-i18n="sortOldest">最早</option>
+              <option value="pmid_desc" data-i18n="sortPmidDesc">PMID 降序</option>
+              <option value="pmid_asc" data-i18n="sortPmidAsc">PMID 升序</option>
+            </select>
+            <select id="pageSize" aria-label="Page size">
+              <option value="10" data-i18n="page10">每页 10 条</option>
+              <option value="20" data-i18n="page20">每页 20 条</option>
+              <option value="50" data-i18n="page50">每页 50 条</option>
+            </select>
+            <select id="exportLimit" aria-label="Export limit">
+              <option value="100" data-i18n="export100">导出 100 条</option>
+              <option value="1000" selected data-i18n="export1000">导出 1000 条</option>
+              <option value="5000" data-i18n="export5000">导出 5000 条</option>
+              <option value="10000" data-i18n="export10000">导出 10000 条</option>
+              <option value="all" data-i18n="exportAll">全量导出</option>
+            </select>
+            <button id="exportJson" class="ghost-button" type="button" data-i18n="exportJson">导出 JSON.gz</button>
+          </div>
+
+          <details id="tipsPanel" class="tips-panel" open>
+            <summary data-i18n="tipsTitle">检索导航与技巧</summary>
+            <div class="tips-layout">
+              <section class="tips-section">
+                <h3 data-i18n="tipsQuickExamples">快速示例</h3>
+                <div class="example-row" aria-label="Search examples">
+                  <button class="example-chip" type="button" data-query="esophageal cancer GNAS" data-i18n="exampleFreeText">自由词检索</button>
+                  <button class="example-chip" type="button" data-query='"Breast Neoplasms"[MeSH]' data-i18n="exampleExactMesh">精确 MeSH</button>
+                  <button class="example-chip" type="button" data-query='single nucleotide polymorphism[Title]' data-i18n="exampleTitle">题名限定</button>
+                  <button class="example-chip" type="button" data-query='Vashist[Author] Cell Oncol[Journal] 2010:2012[Year]' data-i18n="exampleCombined">组合检索</button>
+                  <button class="example-chip" type="button" data-query='Retraction Note[Title]' data-i18n="exampleRetraction">撤稿线索</button>
+                </div>
+              </section>
+              <section class="tips-section">
+                <h3 data-i18n="tipsKeywordTitle">关键词策略</h3>
+                <ul class="tips-list">
+                  <li data-i18n="tipKeyword1">先用 2-4 个核心英文词检索，再用左侧 MeSH、年份、期刊筛选收窄。</li>
+                  <li data-i18n="tipKeyword2">疾病或标准主题词优先尝试 MeSH，例如 "Breast Neoplasms"[MeSH]。</li>
+                  <li data-i18n="tipKeyword3">基因、药物、化合物可放入高级检索对应字段，避免与普通摘要词混在一起。</li>
+                </ul>
+              </section>
+              <section class="tips-section">
+                <h3 data-i18n="tipsModeTitle">模式选择</h3>
+                <ul class="tips-list">
+                  <li data-i18n="tipMode1">均衡适合日常检索；严格适合高精度；宽泛适合扩展召回。</li>
+                  <li data-i18n="tipMode2">短语模式用于固定表达，如 "immune checkpoint inhibitor"。</li>
+                  <li data-i18n="tipMode3">点击结果标题打开详情，导出按钮会导出当前检索条件下的结果。</li>
+                </ul>
+              </section>
+            </div>
+          </details>
+
+          <details id="advancedPanel" class="advanced">
+            <summary data-i18n="advanced">高级检索</summary>
+            <div class="advanced-grid">
+              <label><span data-i18n="author">作者</span>
+                <input id="authorInput" type="text" autocomplete="off">
+              </label>
+              <label><span data-i18n="journal">期刊</span>
+                <input id="journalInput" type="text" autocomplete="off">
+              </label>
+              <label>MeSH
+                <input id="meshInput" type="text" autocomplete="off">
+              </label>
+              <label><span data-i18n="chemical">化合物</span>
+                <input id="chemicalInput" type="text" autocomplete="off">
+              </label>
+              <label><span data-i18n="keyword">关键词</span>
+                <input id="keywordInput" type="text" autocomplete="off">
+              </label>
+              <label><span data-i18n="language">语言</span>
+                <input id="languageInput" type="text" placeholder="eng" autocomplete="off">
+              </label>
+              <label><span data-i18n="fromYear">起始年份</span>
+                <input id="yearFrom" type="number" min="1800" max="2100">
+              </label>
+              <label><span data-i18n="toYear">结束年份</span>
+                <input id="yearTo" type="number" min="1800" max="2100">
+              </label>
+              <label><span data-i18n="publicationType">出版类型</span>
+                <input id="publicationType" type="text" placeholder="Journal Article" autocomplete="off">
+              </label>
+              <label class="check-row">
+                <input id="hasAbstract" type="checkbox">
+                <span data-i18n="hasAbstract">有摘要</span>
+              </label>
+            </div>
+          </details>
+        </form>
+      </section>
+
+      <section class="workspace">
+        <aside class="filters" aria-label="Facets">
+          <div class="panel-title" data-i18n="filters">筛选</div>
+          <div id="activeFilters" class="active-filters"></div>
+          <div id="facetList" class="facet-list"></div>
+        </aside>
+
+        <section class="results-region" aria-live="polite">
+          <div class="results-toolbar">
+            <div>
+              <div id="resultCount" class="result-count" data-i18n="ready">就绪</div>
+              <div id="queryTranslation" class="translation"></div>
+            </div>
+            <div class="pager">
+              <button id="prevPage" class="ghost-button" type="button" data-i18n="prev">上一页</button>
+              <span id="pageLabel">1</span>
+              <button id="nextPage" class="ghost-button" type="button" data-i18n="next">下一页</button>
+            </div>
+          </div>
+
+          <div id="message" class="message" hidden></div>
+          <ol id="results" class="results-list"></ol>
+        </section>
+      </section>
+    </main>
+
+    <dialog id="detailDialog" class="detail-dialog">
+      <div class="detail-head">
+        <div>
+          <div id="detailPmid" class="detail-pmid"></div>
+          <h2 id="detailTitle"></h2>
+        </div>
+        <button id="closeDetail" class="icon-button" type="button" aria-label="Close">×</button>
+      </div>
+      <div id="detailBody" class="detail-body"></div>
+    </dialog>
+
+    <script src="/static/app.js"></script>
+  </body>
+</html>

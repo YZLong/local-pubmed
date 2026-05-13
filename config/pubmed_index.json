@@ -1,0 +1,339 @@
+{
+  "settings": {
+    "number_of_shards": 1,
+    "number_of_replicas": 0,
+    "refresh_interval": "30s",
+    "analysis": {
+      "normalizer": {
+        "lowercase_keyword": {
+          "type": "custom",
+          "filter": ["lowercase", "asciifolding"]
+        }
+      },
+      "analyzer": {
+        "pubmed_text": {
+          "type": "custom",
+          "tokenizer": "standard",
+          "filter": ["lowercase", "asciifolding"]
+        }
+      }
+    }
+  },
+  "mappings": {
+    "dynamic": false,
+    "properties": {
+      "pmid": {"type": "keyword"},
+      "pmid_num": {"type": "long"},
+      "doi": {"type": "keyword", "normalizer": "lowercase_keyword"},
+      "pmcid": {"type": "keyword", "normalizer": "lowercase_keyword"},
+      "pii": {"type": "keyword", "normalizer": "lowercase_keyword"},
+      "article_ids": {
+        "type": "object",
+        "properties": {
+          "type": {"type": "keyword", "normalizer": "lowercase_keyword"},
+          "value": {"type": "keyword", "normalizer": "lowercase_keyword"},
+          "valid": {"type": "keyword"}
+        }
+      },
+      "title": {
+        "type": "text",
+        "analyzer": "pubmed_text",
+        "copy_to": "search_text",
+        "fields": {
+          "keyword": {"type": "keyword", "ignore_above": 512}
+        }
+      },
+      "vernacular_title": {
+        "type": "text",
+        "analyzer": "pubmed_text",
+        "copy_to": "search_text"
+      },
+      "abstract": {
+        "type": "text",
+        "analyzer": "pubmed_text",
+        "copy_to": "search_text"
+      },
+      "abstract_sections": {
+        "type": "object",
+        "properties": {
+          "label": {"type": "keyword"},
+          "nlm_category": {"type": "keyword"},
+          "text": {"type": "text", "analyzer": "pubmed_text", "copy_to": "search_text"}
+        }
+      },
+      "authors": {
+        "type": "object",
+        "properties": {
+          "position": {"type": "integer"},
+          "last_name": {"type": "keyword", "normalizer": "lowercase_keyword"},
+          "fore_name": {"type": "text", "analyzer": "pubmed_text"},
+          "initials": {"type": "keyword", "normalizer": "lowercase_keyword"},
+          "suffix": {"type": "keyword", "normalizer": "lowercase_keyword"},
+          "collective_name": {"type": "text", "analyzer": "pubmed_text", "copy_to": "search_text"},
+          "full_name": {
+            "type": "text",
+            "analyzer": "pubmed_text",
+            "copy_to": "search_text",
+            "fields": {
+              "keyword": {"type": "keyword", "normalizer": "lowercase_keyword", "ignore_above": 256}
+            }
+          },
+          "affiliations": {"type": "text", "analyzer": "pubmed_text"},
+          "affiliation": {"type": "text", "analyzer": "pubmed_text"},
+          "identifiers": {
+            "type": "object",
+            "properties": {
+              "source": {"type": "keyword", "normalizer": "lowercase_keyword"},
+              "value": {"type": "keyword", "normalizer": "lowercase_keyword"}
+            }
+          },
+          "valid": {"type": "keyword"},
+          "equal_contrib": {"type": "keyword"}
+        }
+      },
+      "author_names": {
+        "type": "text",
+        "analyzer": "pubmed_text",
+        "copy_to": "search_text",
+        "fields": {
+          "keyword": {"type": "keyword", "normalizer": "lowercase_keyword", "ignore_above": 256}
+        }
+      },
+      "journal": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "text",
+            "analyzer": "pubmed_text",
+            "copy_to": "search_text",
+            "fields": {
+              "keyword": {"type": "keyword", "normalizer": "lowercase_keyword", "ignore_above": 512}
+            }
+          },
+          "iso_abbreviation": {"type": "keyword", "normalizer": "lowercase_keyword"},
+          "issn": {"type": "keyword", "normalizer": "lowercase_keyword"},
+          "issn_type": {"type": "keyword"},
+          "volume": {"type": "keyword"},
+          "issue": {"type": "keyword"},
+          "country": {"type": "keyword", "normalizer": "lowercase_keyword"},
+          "medline_ta": {"type": "keyword", "normalizer": "lowercase_keyword"},
+          "nlm_unique_id": {"type": "keyword"},
+          "issn_linking": {"type": "keyword", "normalizer": "lowercase_keyword"},
+          "pub_date": {
+            "type": "object",
+            "properties": {
+              "date": {"type": "date"},
+              "year": {"type": "integer"},
+              "month": {"type": "integer"},
+              "day": {"type": "integer"},
+              "granularity": {"type": "keyword"},
+              "season": {"type": "keyword"},
+              "medline_date": {"type": "keyword"},
+              "raw": {"type": "keyword"}
+            }
+          }
+        }
+      },
+      "pagination": {"type": "keyword"},
+      "language": {"type": "keyword"},
+      "publication_types": {"type": "keyword", "normalizer": "lowercase_keyword"},
+      "publication_type_entries": {
+        "type": "object",
+        "properties": {
+          "ui": {"type": "keyword"},
+          "term": {"type": "keyword", "normalizer": "lowercase_keyword"}
+        }
+      },
+      "mesh_terms": {
+        "type": "text",
+        "analyzer": "pubmed_text",
+        "copy_to": "search_text",
+        "fields": {
+          "keyword": {"type": "keyword", "normalizer": "lowercase_keyword", "ignore_above": 256}
+        }
+      },
+      "major_mesh_terms": {"type": "keyword", "normalizer": "lowercase_keyword"},
+      "mesh_headings": {
+        "type": "object",
+        "properties": {
+          "descriptor_ui": {"type": "keyword"},
+          "descriptor": {
+            "type": "text",
+            "analyzer": "pubmed_text",
+            "copy_to": "search_text",
+            "fields": {
+              "keyword": {"type": "keyword", "normalizer": "lowercase_keyword", "ignore_above": 256}
+            }
+          },
+          "major": {"type": "boolean"},
+          "qualifiers": {
+            "type": "object",
+            "properties": {
+              "ui": {"type": "keyword"},
+              "term": {"type": "keyword", "normalizer": "lowercase_keyword"},
+              "major": {"type": "boolean"}
+            }
+          }
+        }
+      },
+      "chemicals": {
+        "type": "text",
+        "analyzer": "pubmed_text",
+        "copy_to": "search_text",
+        "fields": {
+          "keyword": {"type": "keyword", "normalizer": "lowercase_keyword", "ignore_above": 256}
+        }
+      },
+      "chemical_entries": {
+        "type": "object",
+        "properties": {
+          "registry_number": {"type": "keyword", "normalizer": "lowercase_keyword"},
+          "name": {
+            "type": "text",
+            "analyzer": "pubmed_text",
+            "copy_to": "search_text",
+            "fields": {
+              "keyword": {"type": "keyword", "normalizer": "lowercase_keyword", "ignore_above": 256}
+            }
+          },
+          "ui": {"type": "keyword"}
+        }
+      },
+      "keywords": {
+        "type": "text",
+        "analyzer": "pubmed_text",
+        "copy_to": "search_text",
+        "fields": {
+          "keyword": {"type": "keyword", "normalizer": "lowercase_keyword", "ignore_above": 256}
+        }
+      },
+      "keyword_entries": {
+        "type": "object",
+        "properties": {
+          "term": {
+            "type": "text",
+            "analyzer": "pubmed_text",
+            "copy_to": "search_text",
+            "fields": {
+              "keyword": {"type": "keyword", "normalizer": "lowercase_keyword", "ignore_above": 256}
+            }
+          },
+          "owner": {"type": "keyword"},
+          "major": {"type": "boolean"}
+        }
+      },
+      "supplemental_mesh_terms": {
+        "type": "text",
+        "analyzer": "pubmed_text",
+        "copy_to": "search_text",
+        "fields": {
+          "keyword": {"type": "keyword", "normalizer": "lowercase_keyword", "ignore_above": 256}
+        }
+      },
+      "gene_symbols": {"type": "keyword", "normalizer": "lowercase_keyword"},
+      "grants": {
+        "type": "object",
+        "properties": {
+          "id": {"type": "keyword", "normalizer": "lowercase_keyword"},
+          "acronym": {"type": "keyword", "normalizer": "lowercase_keyword"},
+          "agency": {"type": "text", "analyzer": "pubmed_text"},
+          "country": {"type": "keyword", "normalizer": "lowercase_keyword"}
+        }
+      },
+      "data_banks": {
+        "type": "object",
+        "properties": {
+          "name": {"type": "keyword", "normalizer": "lowercase_keyword"},
+          "accession_numbers": {"type": "keyword", "normalizer": "lowercase_keyword"}
+        }
+      },
+      "accession_numbers": {"type": "keyword", "normalizer": "lowercase_keyword"},
+      "comments_corrections": {
+        "type": "object",
+        "properties": {
+          "ref_type": {"type": "keyword", "normalizer": "lowercase_keyword"},
+          "ref_source": {"type": "text", "analyzer": "pubmed_text"},
+          "pmid": {"type": "keyword"},
+          "note": {"type": "text", "analyzer": "pubmed_text"}
+        }
+      },
+      "publication_status_flags": {
+        "type": "object",
+        "properties": {
+          "is_retracted": {"type": "boolean"},
+          "is_retraction_notice": {"type": "boolean"},
+          "has_retraction_relation": {"type": "boolean"},
+          "has_expression_of_concern": {"type": "boolean"},
+          "has_erratum": {"type": "boolean"},
+          "is_retracted_and_republished": {"type": "boolean"}
+        }
+      },
+      "publication_status_normalized": {"type": "keyword", "normalizer": "lowercase_keyword"},
+      "retraction": {
+        "type": "object",
+        "properties": {
+          "relationships": {
+            "type": "object",
+            "properties": {
+              "ref_type": {"type": "keyword", "normalizer": "lowercase_keyword"},
+              "pmid": {"type": "keyword"},
+              "ref_source": {"type": "text", "analyzer": "pubmed_text"},
+              "note": {"type": "text", "analyzer": "pubmed_text"}
+            }
+          },
+          "retracted_by_pmids": {"type": "keyword"},
+          "retracts_pmids": {"type": "keyword"},
+          "expression_of_concern_by_pmids": {"type": "keyword"},
+          "expression_of_concern_for_pmids": {"type": "keyword"},
+          "retracted_and_republished_by_pmids": {"type": "keyword"},
+          "retracted_and_republishes_pmids": {"type": "keyword"}
+        }
+      },
+      "references": {
+        "type": "object",
+        "properties": {
+          "citation": {"type": "text", "analyzer": "pubmed_text"},
+          "article_ids": {
+            "type": "object",
+            "properties": {
+              "type": {"type": "keyword", "normalizer": "lowercase_keyword"},
+              "value": {"type": "keyword", "normalizer": "lowercase_keyword"}
+            }
+          }
+        }
+      },
+      "publication_date": {"type": "date"},
+      "publication_year": {"type": "integer"},
+      "publication_date_granularity": {"type": "keyword"},
+      "article_date": {"type": "date"},
+      "completed_date": {"type": "date"},
+      "revised_date": {"type": "date"},
+      "pubmed_history": {
+        "type": "object",
+        "properties": {
+          "status": {"type": "keyword", "normalizer": "lowercase_keyword"},
+          "date": {"type": "date"},
+          "year": {"type": "integer"},
+          "month": {"type": "integer"},
+          "day": {"type": "integer"},
+          "hour": {"type": "integer"},
+          "minute": {"type": "integer"}
+        }
+      },
+      "pubmed_date": {"type": "date"},
+      "medline_date": {"type": "date"},
+      "entrez_date": {"type": "date"},
+      "publication_status": {"type": "keyword", "normalizer": "lowercase_keyword"},
+      "status": {"type": "keyword"},
+      "indexing_method": {"type": "keyword"},
+      "owner": {"type": "keyword"},
+      "citation_subsets": {"type": "keyword", "normalizer": "lowercase_keyword"},
+      "source_file": {"type": "keyword"},
+      "source_dataset": {"type": "keyword", "normalizer": "lowercase_keyword"},
+      "source_index": {"type": "keyword"},
+      "source_rank": {"type": "integer"},
+      "imported_at": {"type": "date"},
+      "search_text": {"type": "text", "analyzer": "pubmed_text"}
+    }
+  }
+}

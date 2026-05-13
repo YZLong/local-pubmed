@@ -1,0 +1,170 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Local PubMed Help</title>
+    <link rel="stylesheet" href="/static/styles.css">
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="brand">
+        <div class="brand-mark">P</div>
+        <div>
+          <div class="brand-name">Local PubMed</div>
+          <div class="brand-subtitle">Help / 帮助</div>
+        </div>
+      </div>
+      <nav class="top-actions" aria-label="Primary">
+        <a href="/">Search / 检索</a>
+        <a href="/docs">API Docs / API 文档</a>
+      </nav>
+    </header>
+
+    <main class="doc-page">
+      <section class="doc-hero">
+        <h1>Local PubMed Search Guide / 本地 PubMed 检索指南</h1>
+        <p>Use the web interface for PubMed-style literature retrieval, or call the API directly for backend and batch workflows.</p>
+        <p>可以使用网页进行类似 PubMed 的文献检索，也可以直接调用 API 支持后端、批量和导出流程。</p>
+      </section>
+
+      <section class="doc-grid">
+        <article>
+          <h2>Navigation</h2>
+          <p>Start in the main search box, choose a mode, then refine with the left facets. Use Advanced for author, journal, MeSH, chemical, keyword, language, publication type, and year limits.</p>
+          <ol>
+            <li>Run a broad keyword query.</li>
+            <li>Click MeSH, year, journal, source, or status facets to narrow the set.</li>
+            <li>Open a title for full metadata, abstract sections, IDs, and retraction links.</li>
+            <li>Export the current result set as compressed JSON when the query is stable.</li>
+          </ol>
+        </article>
+
+        <article>
+          <h2>操作路径</h2>
+          <p>先使用主检索框，选择检索模式，再通过左侧分面筛选收窄结果。高级检索适合限定作者、期刊、MeSH、化合物、关键词、语言、出版类型和年份。</p>
+          <ol>
+            <li>先运行一个较宽的关键词检索。</li>
+            <li>点击 MeSH、年份、期刊、数据来源或文献状态分面收窄集合。</li>
+            <li>点击题名打开完整元数据、结构化摘要、标识符和撤稿关系。</li>
+            <li>检索式稳定后，将当前结果导出为压缩 JSON。</li>
+          </ol>
+        </article>
+
+        <article>
+          <h2>Search Syntax</h2>
+          <p>The main search box accepts free text and common PubMed-style field tags.</p>
+          <ul>
+            <li><code>single nucleotide polymorphism[Title]</code></li>
+            <li><code>Vashist[Author]</code></li>
+            <li><code>Cell Oncol[Journal]</code></li>
+            <li><code>Esophageal Neoplasms[MeSH]</code></li>
+            <li><code>"Breast Neoplasms"[MeSH]</code> for exact descriptor matching</li>
+            <li><code>GNAS[Chemical]</code></li>
+            <li><code>2010:2012[Year]</code></li>
+          </ul>
+        </article>
+
+        <article>
+          <h2>检索语法</h2>
+          <p>主检索框支持自由文本，也支持常见 PubMed 风格字段标签。</p>
+          <ul>
+            <li><code>single nucleotide polymorphism[Title]</code></li>
+            <li><code>Vashist[Author]</code></li>
+            <li><code>Cell Oncol[Journal]</code></li>
+            <li><code>Esophageal Neoplasms[MeSH]</code></li>
+            <li><code>"Breast Neoplasms"[MeSH]</code> 表示精确匹配该 MeSH 主题词</li>
+            <li><code>GNAS[Chemical]</code></li>
+            <li><code>2010:2012[Year]</code></li>
+          </ul>
+        </article>
+
+        <article>
+          <h2>Keyword Tips</h2>
+          <ul>
+            <li>Use 2-4 core English terms first; add field tags after seeing the first result set.</li>
+            <li>For diseases and standard biomedical concepts, prefer exact MeSH when possible: <code>"Breast Neoplasms"[MeSH]</code>.</li>
+            <li>For variants, combine synonyms in broad mode, then refine by facets. Example: <code>breast cancer neoplasm carcinoma</code>.</li>
+            <li>Use title constraints for high precision: <code>trastuzumab resistance[Title]</code>.</li>
+            <li>Use identifiers directly for lookup-oriented retrieval: PMID, DOI, PMCID, or PII.</li>
+          </ul>
+        </article>
+
+        <article>
+          <h2>关键词技巧</h2>
+          <ul>
+            <li>先用 2-4 个核心英文词检索，查看结果后再逐步加字段标签。</li>
+            <li>疾病和标准生物医学概念优先尝试精确 MeSH：<code>"Breast Neoplasms"[MeSH]</code>。</li>
+            <li>同义词可先用宽泛模式合并检索，再通过分面收窄。例如：<code>breast cancer neoplasm carcinoma</code>。</li>
+            <li>需要高精度时限定题名：<code>trastuzumab resistance[Title]</code>。</li>
+            <li>PMID、DOI、PMCID 或 PII 可直接用于标识符检索。</li>
+          </ul>
+        </article>
+
+        <article>
+          <h2>Search Modes</h2>
+          <dl class="doc-dl">
+            <dt>Balanced</dt><dd>Default. Requires key terms and boosts phrase and identifier matches.</dd>
+            <dt>Strict</dt><dd>Requires all terms without phrase boosting.</dd>
+            <dt>Broad</dt><dd>Expands recall using OR plus minimum term matching.</dd>
+            <dt>Phrase</dt><dd>Requires phrase matching.</dd>
+          </dl>
+        </article>
+
+        <article>
+          <h2>检索模式</h2>
+          <dl class="doc-dl">
+            <dt>均衡</dt><dd>默认模式。要求关键术语命中，同时对短语和标识符加权。</dd>
+            <dt>严格</dt><dd>要求全部术语命中，不启用短语加权。</dd>
+            <dt>宽泛</dt><dd>使用 OR 和最小匹配提高召回。</dd>
+            <dt>短语</dt><dd>要求短语匹配。</dd>
+          </dl>
+        </article>
+
+        <article>
+          <h2>Compressed JSON Export</h2>
+          <p>The web page exports the current query as <code>.json.gz</code>. Fixed-size exports keep the current result ordering. The “Export all” option uses deep pagination and PMID de-duplication.</p>
+          <pre><code>POST /export/search?max_records=1000&amp;source=full
+POST /export/search?all_records=true&amp;source=full</code></pre>
+          <p>The file contains metadata, the normalized request, total hit count, exported count, and item records.</p>
+        </article>
+
+        <article>
+          <h2>压缩 JSON 导出</h2>
+          <p>网页会将当前检索条件导出为 <code>.json.gz</code>。固定条数导出保持当前结果排序；“全量导出”使用深分页并按 PMID 去重。</p>
+          <pre><code>POST /export/search?max_records=1000&amp;source=full
+POST /export/search?all_records=true&amp;source=full</code></pre>
+          <p>文件包含元数据、规范化请求、总命中数、导出条数和文献记录。</p>
+        </article>
+
+        <article>
+          <h2>Retraction Status</h2>
+          <p>Imports tag retracted publications, retraction notices, and expressions of concern from PubMed publication types and correction relationships.</p>
+          <pre><code>POST /search/advanced
+{"filters":[{"field":"publication_status_normalized","values":["retracted"]}]}</code></pre>
+        </article>
+
+        <article>
+          <h2>撤稿状态</h2>
+          <p>导入时会根据 PubMed 出版类型和更正关系标记已撤稿文献、撤稿公告和表达关注记录。</p>
+          <pre><code>POST /search/advanced
+{"filters":[{"field":"publication_status_normalized","values":["retracted"]}]}</code></pre>
+        </article>
+
+        <article>
+          <h2>API Examples</h2>
+          <pre><code>curl 'http://127.0.0.1:8000/search?q=esophageal%20cancer%20GNAS&amp;size=5'
+
+curl 'http://127.0.0.1:8000/lookup?id=PMC12994959'</code></pre>
+        </article>
+
+        <article>
+          <h2>API 示例</h2>
+          <pre><code>curl 'http://127.0.0.1:8000/search?q=esophageal%20cancer%20GNAS&amp;size=5'
+
+curl 'http://127.0.0.1:8000/lookup?id=PMC12994959'</code></pre>
+        </article>
+      </section>
+    </main>
+  </body>
+</html>
