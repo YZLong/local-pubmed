@@ -4,3 +4,4 @@ __pycache__/
 esdata/
 data/
 .__pycache__/
+.import*json*
