@@ -99,8 +99,7 @@ def parse_date_parts(parent):
 
     month = parse_month(month_raw)
     day = parse_day(day_raw)
-    granularity = "day" if month and day else "month" if month else "year"
-    date_value = f"{year_num:04d}-{month or '01'}-{day or '01'}"
+    date_value, granularity = build_es_date(year_num, month, day)
 
     return drop_empty({
         "date": date_value,
@@ -145,6 +144,33 @@ def parse_day(value):
     if 1 <= day <= 31:
         return f"{day:02d}"
     return None
+
+
+def build_es_date(year: int, month: str | None, day: str | None) -> tuple[str | None, str | None]:
+    """Build a valid Elasticsearch date, or return None for invalid PubMed dates."""
+    month_value = int(month) if month else 1
+    day_value = int(day) if day else 1
+    try:
+        dt.date(year, month_value, day_value)
+    except ValueError:
+        return None, None
+    if month and day:
+        return f"{year:04d}-{month}-{day}", "day"
+    if month:
+        return f"{year:04d}-{month}-01", "month"
+    return f"{year:04d}-01-01", "year"
+
+
+def parse_optional_int(value):
+    if value is None:
+        return None
+    value = str(value).strip()
+    if not value or value.lower() in {"null", "none", "nan", "na", "n/a"}:
+        return None
+    try:
+        return int(value)
+    except ValueError:
+        return None
 
 
 def parse_authors(article):
@@ -328,11 +354,12 @@ def parse_history(article):
             "year": parsed.get("year"),
             "month": parsed.get("month"),
             "day": parsed.get("day"),
-            "hour": find_text(pub_date, "Hour"),
-            "minute": find_text(pub_date, "Minute"),
+            "hour": parse_optional_int(find_text(pub_date, "Hour")),
+            "minute": parse_optional_int(find_text(pub_date, "Minute")),
         })
         entries.append(entry)
-        by_status[status] = parsed.get("date")
+        if parsed.get("date"):
+            by_status[status] = parsed.get("date")
     return entries, by_status
 
 

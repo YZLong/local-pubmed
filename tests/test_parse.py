@@ -35,6 +35,8 @@ from import_pubmed_to_es import (
     parse_keywords,
     parse_mesh,
     parse_month,
+    parse_history,
+    parse_optional_int,
     source_rank,
 )
 
@@ -146,6 +148,41 @@ class TestParseDateParts:
         elem = ET.fromstring("<PubDate><Year>2022</Year><Month>8</Month></PubDate>")
         result = parse_date_parts(elem)
         assert result["month"] == 8
+
+    def test_invalid_calendar_date_omits_es_date(self):
+        elem = ET.fromstring("<PubDate><Year>2018</Year><Month>Feb</Month><Day>31</Day></PubDate>")
+        result = parse_date_parts(elem)
+        assert "date" not in result
+        assert result["year"] == 2018
+        assert result["month"] == 2
+        assert result["day"] == 31
+        assert "granularity" not in result
+
+
+class TestParseHistory:
+    def test_null_hour_and_minute_are_omitted(self):
+        article = ET.fromstring(textwrap.dedent("""\
+            <PubmedArticle>
+              <PubmedData>
+                <History>
+                  <PubMedPubDate PubStatus="pubmed">
+                    <Year>2020</Year><Month>Jan</Month><Day>2</Day>
+                    <Hour>null</Hour><Minute>null</Minute>
+                  </PubMedPubDate>
+                </History>
+              </PubmedData>
+            </PubmedArticle>
+        """))
+        entries, by_status = parse_history(article)
+        assert entries[0]["date"] == "2020-01-02"
+        assert "hour" not in entries[0]
+        assert "minute" not in entries[0]
+        assert by_status["pubmed"] == "2020-01-02"
+
+    def test_parse_optional_int(self):
+        assert parse_optional_int("8") == 8
+        assert parse_optional_int("null") is None
+        assert parse_optional_int("bad") is None
 
 
 # ---------------------------------------------------------------------------
