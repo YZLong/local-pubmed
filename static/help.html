@@ -138,6 +138,22 @@ POST /export/search?all_records=true&amp;source=full</code></pre>
         </article>
 
         <article>
+          <h2>PMC Full Text</h2>
+          <p>When the PMC index exists, the result toolbar shows how many PMC full-text records correspond to the current PubMed query. Matching uses PMID and PMCID links.</p>
+          <pre><code>POST /pmc/fulltext/count
+POST /export/pmc-fulltext?source=full
+GET /pmc/articles/PMC12823335</code></pre>
+        </article>
+
+        <article>
+          <h2>PMC 全文</h2>
+          <p>当本地已建立 PMC 索引时，结果工具栏会显示当前 PubMed 检索对应的 PMC 全文数量。匹配依据 PMID 和 PMCID 关联。</p>
+          <pre><code>POST /pmc/fulltext/count
+POST /export/pmc-fulltext?source=full
+GET /pmc/articles/PMC12823335</code></pre>
+        </article>
+
+        <article>
           <h2>Retraction Status</h2>
           <p>Imports tag retracted publications, retraction notices, and expressions of concern from PubMed publication types and correction relationships.</p>
           <pre><code>POST /search/advanced

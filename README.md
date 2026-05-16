@@ -114,6 +114,42 @@ uv run python scripts/search_pubmed.py "esophageal cancer GNAS"
 
 The default search targets title, abstract, MeSH terms, author names, journal title, keywords, and chemicals. PMID and DOI are stored as exact keyword fields for backend lookups.
 
+## PMC OA Full Text
+
+PMC OA Bulk JATS XML archives can be indexed into a separate full-text index:
+
+```bash
+uv run python scripts/import_pmc_oa_to_es.py \
+  --input data/pmc/oa_bulk \
+  --index pmc_articles_v1 \
+  --alias pmc_articles \
+  --mapping config/pmc_index.json \
+  --recreate
+```
+
+The importer streams `*.tar.gz` archives directly and uses `pmcid` as the Elasticsearch `_id`. Each document records `source_archive`, `source_member`, and `source_file` so the exact source tarball and XML member can be traced.
+
+After PMC indexing is available, the web UI shows how many PMC full-text documents match the current PubMed search result set. The count and export are based on PMID/PMCID linkage between `pubmed_articles` and `pmc_articles`.
+
+Useful PMC endpoints:
+
+- `GET /pmc/articles/{pmcid}`: PMC full-text detail lookup.
+- `POST /pmc/fulltext/count`: count PMC full-text records corresponding to a PubMed advanced search request.
+- `POST /export/pmc-fulltext`: export the corresponding PMC full-text records as compressed `.json.gz`.
+
+Example:
+
+```bash
+curl -X POST 'http://127.0.0.1:8000/pmc/fulltext/count' \
+  -H 'Content-Type: application/json' \
+  -d '{"query":"type 1 diabetes glucagon","mode":"balanced","source":"ids"}'
+
+curl -o pmc_fulltext.json.gz \
+  -X POST 'http://127.0.0.1:8000/export/pmc-fulltext?source=full' \
+  -H 'Content-Type: application/json' \
+  -d '{"query":"type 1 diabetes glucagon","mode":"balanced","source":"ids"}'
+```
+
 ## 4. Search API
 
 Start the local search app:
@@ -139,11 +175,14 @@ Useful endpoints:
 - `GET /health`: Elasticsearch health.
 - `GET /fields`: supported query fields, filter fields, and sort modes.
 - `GET /articles/{pmid}`: PMID detail lookup.
+- `GET /pmc/articles/{pmcid}`: PMC full-text detail lookup.
 - `GET /lookup?id=...`: PMID, DOI, PMCID, PII, or ArticleId lookup.
 - `GET /search`: simple query interface for frontend forms.
 - `POST /search/advanced`: compound query interface.
+- `POST /pmc/fulltext/count`: PMC full-text count for the current PubMed query.
 - `POST /search/dsl`: debug endpoint that returns the Elasticsearch DSL generated from an advanced request.
 - `POST /export/search`: export search results as compressed `.json.gz`.
+- `POST /export/pmc-fulltext`: export matching PMC full text as compressed `.json.gz`.
 
 Search modes:
 

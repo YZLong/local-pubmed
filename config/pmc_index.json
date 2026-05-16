@@ -1,0 +1,159 @@
+{
+  "settings": {
+    "number_of_shards": 1,
+    "number_of_replicas": 0,
+    "refresh_interval": "30s",
+    "analysis": {
+      "normalizer": {
+        "lowercase_keyword": {
+          "type": "custom",
+          "filter": ["lowercase", "asciifolding"]
+        }
+      },
+      "analyzer": {
+        "pmc_text": {
+          "type": "custom",
+          "tokenizer": "standard",
+          "filter": ["lowercase", "asciifolding"]
+        }
+      }
+    }
+  },
+  "mappings": {
+    "dynamic": false,
+    "properties": {
+      "pmcid": {"type": "keyword", "normalizer": "lowercase_keyword"},
+      "pmc_num": {"type": "long"},
+      "pmid": {"type": "keyword"},
+      "doi": {"type": "keyword", "normalizer": "lowercase_keyword"},
+      "article_ids": {
+        "type": "object",
+        "properties": {
+          "type": {"type": "keyword", "normalizer": "lowercase_keyword"},
+          "value": {"type": "keyword", "normalizer": "lowercase_keyword"}
+        }
+      },
+      "article_type": {"type": "keyword", "normalizer": "lowercase_keyword"},
+      "language": {"type": "keyword", "normalizer": "lowercase_keyword"},
+      "title": {
+        "type": "text",
+        "analyzer": "pmc_text",
+        "copy_to": "search_text",
+        "fields": {
+          "keyword": {"type": "keyword", "ignore_above": 512}
+        }
+      },
+      "abstract": {
+        "type": "text",
+        "analyzer": "pmc_text",
+        "copy_to": "search_text"
+      },
+      "body_text": {
+        "type": "text",
+        "analyzer": "pmc_text",
+        "copy_to": "search_text"
+      },
+      "full_text": {
+        "type": "text",
+        "analyzer": "pmc_text",
+        "copy_to": "search_text"
+      },
+      "sections": {
+        "type": "object",
+        "properties": {
+          "id": {"type": "keyword"},
+          "type": {"type": "keyword", "normalizer": "lowercase_keyword"},
+          "title": {
+            "type": "text",
+            "analyzer": "pmc_text",
+            "copy_to": "search_text",
+            "fields": {
+              "keyword": {"type": "keyword", "ignore_above": 256}
+            }
+          },
+          "text": {"type": "text", "analyzer": "pmc_text", "copy_to": "search_text"}
+        }
+      },
+      "section_titles": {
+        "type": "text",
+        "analyzer": "pmc_text",
+        "fields": {
+          "keyword": {"type": "keyword", "normalizer": "lowercase_keyword", "ignore_above": 256}
+        }
+      },
+      "authors": {
+        "type": "object",
+        "properties": {
+          "position": {"type": "integer"},
+          "surname": {"type": "keyword", "normalizer": "lowercase_keyword"},
+          "given_names": {"type": "text", "analyzer": "pmc_text"},
+          "full_name": {
+            "type": "text",
+            "analyzer": "pmc_text",
+            "copy_to": "search_text",
+            "fields": {
+              "keyword": {"type": "keyword", "normalizer": "lowercase_keyword", "ignore_above": 256}
+            }
+          },
+          "orcid": {"type": "keyword", "normalizer": "lowercase_keyword"},
+          "corresponding": {"type": "boolean"}
+        }
+      },
+      "author_names": {
+        "type": "text",
+        "analyzer": "pmc_text",
+        "copy_to": "search_text",
+        "fields": {
+          "keyword": {"type": "keyword", "normalizer": "lowercase_keyword", "ignore_above": 256}
+        }
+      },
+      "journal": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "text",
+            "analyzer": "pmc_text",
+            "copy_to": "search_text",
+            "fields": {
+              "keyword": {"type": "keyword", "normalizer": "lowercase_keyword", "ignore_above": 512}
+            }
+          },
+          "nlm_ta": {"type": "keyword", "normalizer": "lowercase_keyword"},
+          "iso_abbreviation": {"type": "keyword", "normalizer": "lowercase_keyword"},
+          "publisher": {"type": "text", "analyzer": "pmc_text"},
+          "issn_print": {"type": "keyword", "normalizer": "lowercase_keyword"},
+          "issn_electronic": {"type": "keyword", "normalizer": "lowercase_keyword"}
+        }
+      },
+      "publication_date": {"type": "date"},
+      "publication_year": {"type": "integer"},
+      "publication_date_type": {"type": "keyword", "normalizer": "lowercase_keyword"},
+      "volume": {"type": "keyword"},
+      "issue": {"type": "keyword"},
+      "fpage": {"type": "keyword"},
+      "lpage": {"type": "keyword"},
+      "elocation_id": {"type": "keyword"},
+      "subjects": {
+        "type": "text",
+        "analyzer": "pmc_text",
+        "copy_to": "search_text",
+        "fields": {
+          "keyword": {"type": "keyword", "normalizer": "lowercase_keyword", "ignore_above": 256}
+        }
+      },
+      "license": {
+        "type": "object",
+        "properties": {
+          "href": {"type": "keyword", "normalizer": "lowercase_keyword"},
+          "text": {"type": "text", "analyzer": "pmc_text"}
+        }
+      },
+      "source_archive": {"type": "keyword"},
+      "source_member": {"type": "keyword"},
+      "source_file": {"type": "keyword"},
+      "source_dataset": {"type": "keyword", "normalizer": "lowercase_keyword"},
+      "imported_at": {"type": "date"},
+      "search_text": {"type": "text", "analyzer": "pmc_text"}
+    }
+  }
+}

@@ -1,0 +1,37 @@
+{
+  "settings": {
+    "number_of_shards": 1,
+    "number_of_replicas": 0,
+    "refresh_interval": "1s"
+  },
+  "mappings": {
+    "dynamic": false,
+    "properties": {
+      "query_id": {
+        "type": "keyword"
+      },
+      "pmids": {
+        "type": "keyword"
+      },
+      "pmcids": {
+        "type": "keyword",
+        "normalizer": "lowercase_keyword"
+      },
+      "created_at": {
+        "type": "date"
+      },
+      "expires_at": {
+        "type": "date"
+      },
+      "query_hash": {
+        "type": "keyword"
+      },
+      "total_pmids": {
+        "type": "integer"
+      },
+      "total_pmcids": {
+        "type": "integer"
+      }
+    }
+  }
+}

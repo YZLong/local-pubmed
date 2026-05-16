@@ -5,6 +5,7 @@ const state = {
   facetFilters: [],
   lastRequest: null,
   lang: localStorage.getItem("pubmed_lang") || "zh",
+  pmcCountRequestId: 0,
 };
 
 const els = {
@@ -15,6 +16,8 @@ const els = {
   pageSize: document.getElementById("pageSize"),
   exportLimit: document.getElementById("exportLimit"),
   exportJson: document.getElementById("exportJson"),
+  exportPmcFulltext: document.getElementById("exportPmcFulltext"),
+  pmcFulltextCount: document.getElementById("pmcFulltextCount"),
   author: document.getElementById("authorInput"),
   journal: document.getElementById("journalInput"),
   mesh: document.getElementById("meshInput"),
@@ -76,8 +79,13 @@ const I18N = {
     export10000: "导出 10000 条",
     exportAll: "全量导出",
     exportJson: "导出 JSON.gz",
+    exportPmcFulltext: "下载 PMC 全文 JSON.gz",
+    exportingPmc: "正在导出 PMC...",
     exporting: "正在导出...",
     exported: "导出已开始",
+    pmcChecking: "PMC 全文：统计中...",
+    pmcCount: "PMC 全文",
+    pmcUnavailable: "PMC 全文：不可用",
     tipsTitle: "检索导航与技巧",
     tipsQuickExamples: "快速示例",
     tipsKeywordTitle: "关键词策略",
@@ -160,8 +168,13 @@ const I18N = {
     export10000: "Export 10000",
     exportAll: "Export all",
     exportJson: "Export JSON.gz",
+    exportPmcFulltext: "Download PMC JSON.gz",
+    exportingPmc: "Exporting PMC...",
     exporting: "Exporting...",
     exported: "Export started",
+    pmcChecking: "PMC full text: checking...",
+    pmcCount: "PMC full text",
+    pmcUnavailable: "PMC full text: unavailable",
     tipsTitle: "Search Navigation & Tips",
     tipsQuickExamples: "Quick examples",
     tipsKeywordTitle: "Keyword strategy",
@@ -278,6 +291,7 @@ els.nextPage.addEventListener("click", () => {
 els.refreshStatus.addEventListener("click", refreshStatus);
 els.languageToggle.addEventListener("click", toggleLanguage);
 els.exportJson.addEventListener("click", exportCurrentSearch);
+els.exportPmcFulltext.addEventListener("click", exportCurrentPmcFulltext);
 els.closeDetail.addEventListener("click", () => els.detailDialog.close());
 for (const chip of els.exampleChips) {
   chip.addEventListener("click", () => {
@@ -344,8 +358,10 @@ async function runSearch() {
     renderResults(result);
     renderFacets(result.facets || {});
     renderActiveFilters();
+    refreshPmcFulltextCount(request);
   } catch (error) {
     showMessage(error.message || "Search failed");
+    renderPmcFulltextCount(null);
   } finally {
     setLoading(false);
   }
@@ -392,6 +408,73 @@ async function exportCurrentSearch() {
   } finally {
     els.exportJson.disabled = false;
     els.exportJson.textContent = previousText;
+  }
+}
+
+async function refreshPmcFulltextCount(request) {
+  const requestId = ++state.pmcCountRequestId;
+  renderPmcFulltextCount(null, true);
+  try {
+    const result = await requestJSON("/pmc/fulltext/count", {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({...request, from: 0, size: 100, source: "ids", facets: false, highlight: false}),
+    });
+    if (requestId !== state.pmcCountRequestId) return;
+    renderPmcFulltextCount(result.pmc_fulltext_count || 0);
+  } catch {
+    if (requestId !== state.pmcCountRequestId) return;
+    renderPmcFulltextCount(null);
+  }
+}
+
+function renderPmcFulltextCount(count, checking = false) {
+  if (checking) {
+    els.pmcFulltextCount.textContent = t("pmcChecking");
+    els.exportPmcFulltext.disabled = true;
+    return;
+  }
+  if (count === null || count === undefined) {
+    els.pmcFulltextCount.textContent = t("pmcUnavailable");
+    els.exportPmcFulltext.disabled = true;
+    return;
+  }
+  els.pmcFulltextCount.textContent = `${t("pmcCount")}: ${Number(count).toLocaleString()}`;
+  els.exportPmcFulltext.disabled = Number(count) <= 0;
+}
+
+async function exportCurrentPmcFulltext() {
+  clearMessage();
+  const request = state.lastRequest || buildRequest();
+  const previousText = els.exportPmcFulltext.textContent;
+  els.exportPmcFulltext.disabled = true;
+  els.exportPmcFulltext.textContent = t("exportingPmc");
+  try {
+    const response = await fetch("/export/pmc-fulltext?source=full", {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({...request, from: 0, size: 100, source: "ids", facets: false, highlight: false}),
+    });
+    if (!response.ok) {
+      throw new Error(await response.text());
+    }
+    const blob = await response.blob();
+    const disposition = response.headers.get("Content-Disposition") || "";
+    const filename = disposition.match(/filename="([^"]+)"/)?.[1] || `pmc_fulltext_export_${Date.now()}.json.gz`;
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+    showMessage(`${t("exported")}: ${response.headers.get("X-Exported-Records") || ""}`);
+  } catch (error) {
+    showMessage(`${t("exportFailed")}: ${error.message || error}`);
+  } finally {
+    els.exportPmcFulltext.textContent = previousText;
+    refreshPmcFulltextCount(request);
   }
 }
 

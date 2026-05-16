@@ -390,6 +390,20 @@ button {
   font-size: 12px;
 }
 
+.pmc-tools {
+  margin-top: 8px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.pmc-count {
+  color: var(--teal-dark);
+  font-size: 12px;
+  font-weight: 750;
+}
+
 .pager {
   display: flex;
   align-items: center;
