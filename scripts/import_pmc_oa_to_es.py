@@ -32,6 +32,9 @@ DEFAULT_INPUT = "data/pmc/oa_bulk"
 DEFAULT_MAPPING = "config/pmc_index.json"
 XLINK_HREF = "{http://www.w3.org/1999/xlink}href"
 
+# 413 时每次减半，最小不低于此值
+MIN_BATCH_SIZE = 10
+
 
 def text_of(elem) -> str | None:
     if elem is None:
@@ -286,15 +289,37 @@ def ensure_index(es_url: str, index: str, alias: str, mapping_path: str, recreat
         print(f"Alias {alias} includes {index}")
 
 
-def flush_bulk(es_url: str, lines: list[str]) -> int:
-    result = request_ndjson(f"{es_url}/_bulk", lines)
-    if not result.get("errors"):
-        return 0
-    failures = 0
-    for item in result.get("items", []):
-        if item.get("index", {}).get("error"):
-            failures += 1
-    return failures
+def flush_bulk(es_url: str, lines: list[str], batch_size: int) -> tuple[int, int]:
+    """
+    发送 bulk 请求，遇到 413 时自动减半重试，直到 MIN_BATCH_SIZE。
+
+    返回 (failures, effective_batch_size)。
+    effective_batch_size 可能比传入的 batch_size 小，调用方应据此调整后续批次大小。
+    """
+    current_size = batch_size
+    while True:
+        # 按 current_size 切分（lines 是 action+doc 对，每对占 2 行）
+        chunk_lines = lines[: current_size * 2]
+        try:
+            result = request_ndjson(f"{es_url}/_bulk", chunk_lines)
+        except RuntimeError as exc:
+            if "HTTP 413" in str(exc):
+                new_size = max(current_size // 2, MIN_BATCH_SIZE)
+                if new_size == current_size:
+                    # 已经到最小值还是 413，说明单篇文档本身超限，跳过
+                    print(f"\n  [WARN] 413 at batch_size={current_size}, skipping {len(chunk_lines) // 2} docs")
+                    return len(chunk_lines) // 2, current_size
+                print(f"\n  [WARN] 413, reducing batch_size {current_size} → {new_size}")
+                current_size = new_size
+                continue
+            raise
+
+        failures = 0
+        if result.get("errors"):
+            for item in result.get("items", []):
+                if item.get("index", {}).get("error"):
+                    failures += 1
+        return failures, current_size
 
 
 def source_dataset_for_archive(path: Path) -> str:
@@ -306,13 +331,54 @@ def source_dataset_for_archive(path: Path) -> str:
     return "custom"
 
 
-def import_archives(es_url: str, index: str, archives: list[Path], batch_size: int, limit: int | None) -> tuple[int, int]:
+def load_progress(progress_file: Path) -> set[str]:
+    """读取已完成的 archive 文件名集合。"""
+    if not progress_file.exists():
+        return set()
+    try:
+        with open(progress_file, encoding="utf-8") as fh:
+            data = json.load(fh)
+        return set(data.get("completed", []))
+    except (json.JSONDecodeError, OSError):
+        return set()
+
+
+def save_progress(progress_file: Path, completed: set[str]) -> None:
+    """持久化已完成的 archive 文件名。"""
+    tmp = progress_file.with_suffix(".tmp")
+    with open(tmp, "w", encoding="utf-8") as fh:
+        json.dump({"completed": sorted(completed)}, fh, indent=2)
+    tmp.replace(progress_file)
+
+
+def import_archives(
+    es_url: str,
+    index: str,
+    archives: list[Path],
+    batch_size: int,
+    limit: int | None,
+    progress_file: Path | None = None,
+    no_resume: bool = False,
+) -> tuple[int, int]:
     imported_at = dt.datetime.now(dt.UTC).replace(microsecond=0).isoformat()
     lines: list[str] = []
     total = 0
     failures = 0
     started = time.time()
+    current_batch_size = batch_size
+
+    # 断点续传：读取已完成的 archive 列表
+    completed: set[str] = set()
+    if progress_file and not no_resume:
+        completed = load_progress(progress_file)
+        if completed:
+            print(f"Resuming: {len(completed)} archive(s) already completed, skipping them.")
+
     for archive in archives:
+        if archive.name in completed:
+            print(f"Skipping already-completed archive: {archive.name}")
+            continue
+
         archive_count = 0
         source_dataset = source_dataset_for_archive(archive)
         for doc in iter_archive_docs(archive, imported_at, source_dataset):
@@ -320,18 +386,31 @@ def import_archives(es_url: str, index: str, archives: list[Path], batch_size: i
             lines.append(json_dumps(doc, ensure_ascii=False))
             total += 1
             archive_count += 1
-            if len(lines) >= batch_size * 2:
-                failures += flush_bulk(es_url, lines)
+            if len(lines) >= current_batch_size * 2:
+                f, current_batch_size = flush_bulk(es_url, lines, current_batch_size)
+                failures += f
                 lines = []
                 print_progress(total, failures, started)
             if limit and total >= limit:
                 break
+
+        # 当前 archive 处理完毕，刷新剩余数据
+        if lines:
+            f, current_batch_size = flush_bulk(es_url, lines, current_batch_size)
+            failures += f
+            lines = []
+            print_progress(total, failures, started)
+
         print(f"\nParsed {archive}: {archive_count} XML articles")
+
+        # 记录进度
+        if progress_file:
+            completed.add(archive.name)
+            save_progress(progress_file, completed)
+
         if limit and total >= limit:
             break
-    if lines:
-        failures += flush_bulk(es_url, lines)
-        print_progress(total, failures, started)
+
     request_json("POST", f"{es_url}/{index}/_refresh")
     print(f"\nImported {total} PMC docs into {index}; bulk item failures: {failures}")
     return total, failures
@@ -349,19 +428,39 @@ def main() -> int:
     parser.add_argument("--alias", default=DEFAULT_ALIAS)
     parser.add_argument("--mapping", default=DEFAULT_MAPPING)
     parser.add_argument("--input", default=DEFAULT_INPUT)
-    parser.add_argument("--batch-size", type=int, default=250)
+    parser.add_argument("--batch-size", type=int, default=100,
+                        help="Initial bulk batch size (docs). Auto-reduces on 413. Default: 100")
     parser.add_argument("--limit", type=int)
     parser.add_argument("--recreate", action="store_true")
     parser.add_argument("--wait-timeout", type=int, default=180)
+    parser.add_argument("--progress-file", default=None,
+                        help="JSON file to track completed archives for resume support. "
+                             "Defaults to .import_progress_pmc_<index>.json in the current directory.")
+    parser.add_argument("--no-resume", action="store_true",
+                        help="Ignore existing progress and start from scratch (does not delete the index).")
     args = parser.parse_args()
 
     archives = expand_archives(args.input)
     if not archives:
         parser.error(f"No .tar.gz files found under {args.input}")
 
+    # 进度文件路径
+    if args.progress_file:
+        progress_file = Path(args.progress_file)
+    else:
+        progress_file = Path(f".import_progress_pmc_{args.index}.json")
+
     wait_for_es(args.es_url, args.wait_timeout)
     ensure_index(args.es_url, args.index, args.alias, args.mapping, args.recreate)
-    _, failures = import_archives(args.es_url, args.index, archives, args.batch_size, args.limit)
+    _, failures = import_archives(
+        args.es_url,
+        args.index,
+        archives,
+        args.batch_size,
+        args.limit,
+        progress_file=progress_file,
+        no_resume=args.no_resume,
+    )
     return 2 if failures else 0
 
 
