@@ -291,27 +291,39 @@ def ensure_index(es_url: str, index: str, alias: str, mapping_path: str, recreat
 
 def flush_bulk(es_url: str, lines: list[str], batch_size: int) -> tuple[int, int]:
     """
-    发送 bulk 请求，遇到 413 时自动减半重试，直到 MIN_BATCH_SIZE。
-
+    发送 bulk 请求。
+    - 遇到 413（请求体过大）：自动减半 batch_size 重试
+    - 遇到 429（circuit breaker / 内存压力）：指数退避等待后重试，同时减小 batch_size
     返回 (failures, effective_batch_size)。
-    effective_batch_size 可能比传入的 batch_size 小，调用方应据此调整后续批次大小。
     """
     current_size = batch_size
+    retry_wait = 10  # 429 初始等待秒数
+
     while True:
-        # 按 current_size 切分（lines 是 action+doc 对，每对占 2 行）
         chunk_lines = lines[: current_size * 2]
         try:
             result = request_ndjson(f"{es_url}/_bulk", chunk_lines)
         except RuntimeError as exc:
-            if "HTTP 413" in str(exc):
+            err = str(exc)
+
+            if "HTTP 413" in err:
                 new_size = max(current_size // 2, MIN_BATCH_SIZE)
                 if new_size == current_size:
-                    # 已经到最小值还是 413，说明单篇文档本身超限，跳过
                     print(f"\n  [WARN] 413 at batch_size={current_size}, skipping {len(chunk_lines) // 2} docs")
                     return len(chunk_lines) // 2, current_size
                 print(f"\n  [WARN] 413, reducing batch_size {current_size} → {new_size}")
                 current_size = new_size
                 continue
+
+            if "HTTP 429" in err:
+                new_size = max(current_size // 2, MIN_BATCH_SIZE)
+                print(f"\n  [WARN] 429 circuit breaker, waiting {retry_wait}s then retrying "
+                      f"(batch_size {current_size} → {new_size}) ...")
+                time.sleep(retry_wait)
+                retry_wait = min(retry_wait * 2, 120)  # 指数退避，最长 2 分钟
+                current_size = new_size
+                continue
+
             raise
 
         failures = 0
@@ -359,6 +371,7 @@ def import_archives(
     limit: int | None,
     progress_file: Path | None = None,
     no_resume: bool = False,
+    flush_interval: float = 0.5,
 ) -> tuple[int, int]:
     imported_at = dt.datetime.now(dt.UTC).replace(microsecond=0).isoformat()
     lines: list[str] = []
@@ -391,6 +404,8 @@ def import_archives(
                 failures += f
                 lines = []
                 print_progress(total, failures, started)
+                if flush_interval > 0:
+                    time.sleep(flush_interval)
             if limit and total >= limit:
                 break
 
@@ -428,8 +443,10 @@ def main() -> int:
     parser.add_argument("--alias", default=DEFAULT_ALIAS)
     parser.add_argument("--mapping", default=DEFAULT_MAPPING)
     parser.add_argument("--input", default=DEFAULT_INPUT)
-    parser.add_argument("--batch-size", type=int, default=100,
-                        help="Initial bulk batch size (docs). Auto-reduces on 413. Default: 100")
+    parser.add_argument("--batch-size", type=int, default=50,
+                        help="Initial bulk batch size (docs). Auto-reduces on 413/429. Default: 50")
+    parser.add_argument("--flush-interval", type=float, default=0.5,
+                        help="Seconds to sleep between bulk flushes, gives ES time to GC. Default: 0.5")
     parser.add_argument("--limit", type=int)
     parser.add_argument("--recreate", action="store_true")
     parser.add_argument("--wait-timeout", type=int, default=180)
@@ -460,6 +477,7 @@ def main() -> int:
         args.limit,
         progress_file=progress_file,
         no_resume=args.no_resume,
+        flush_interval=args.flush_interval,
     )
     return 2 if failures else 0
 
