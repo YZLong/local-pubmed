@@ -469,6 +469,11 @@ def main() -> int:
 
     wait_for_es(args.es_url, args.wait_timeout)
     ensure_index(args.es_url, args.index, args.alias, args.mapping, args.recreate)
+
+    # --recreate 删了索引，进度文件也要同步清空，否则会跳过已删除的数据
+    if args.recreate and progress_file.exists():
+        progress_file.unlink()
+        print(f"Cleared progress file {progress_file} due to --recreate")
     _, failures = import_archives(
         args.es_url,
         args.index,
